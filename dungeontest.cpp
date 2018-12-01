@@ -22,6 +22,8 @@ namespace patch
 #include <math.h> // sin/cos
 #include <cstring> // memcpy
 
+#include "bitmap.h"
+
 #define PI 3.14159265359
 
 const int param_n_rooms = 50;
@@ -185,7 +187,35 @@ int main() {
 			}
 		}
 
-		if (escape) break;
+		// check ur work man
+		if (escape) {
+			bool valid = true;
+			for (int i = 0; i < param_n_rooms; i++) {
+				for (int j = 0; j < param_n_rooms; j++) {
+					if (i == j) continue;
+					
+					if (rooms[j].x > rooms[i].x + rooms[i].w ||
+						rooms[i].x > rooms[j].x + rooms[j].w ||
+						rooms[j].y > rooms[i].y + rooms[i].h ||
+						rooms[i].y > rooms[j].y + rooms[j].h) {
+						continue;
+					} else {
+						valid = false;
+						break;
+					}
+				}
+			}
+			
+			if (valid) {
+				seperated = true;
+				break;
+			} else {
+				std::cout << "problem with overlap, retry" << std::endl;
+				for (int i = 0; i < param_n_rooms; i++) {
+					rooms[i].fixed = false;
+				}
+			}
+		} 
 		
 		cycles++;
 	}
@@ -212,7 +242,13 @@ int main() {
 	// link rooms together
 	int top_link_idx = 0;
 	graph_edge_t * links = new graph_edge_t[num_main_rooms * num_main_rooms]; // i hope this is enough
+	float min_y_offset = 0;
+	float min_x_offset = 0;
 	for (int i = 0; i < num_main_rooms; i++){
+		// update min offsets because why not
+		if (main_rooms[i].y < min_y_offset) min_y_offset = main_rooms[i].y;
+		if (main_rooms[i].x < min_x_offset) min_x_offset = main_rooms[i].x;
+		
 		// if room i has no free slots skip it
 		if (main_rooms[i].n1 != -1 &&
 			main_rooms[i].n2 != -1 && 
@@ -323,6 +359,8 @@ int main() {
 	}
 	
 	// clean up
+	min_y_offset = floor(min_y_offset);
+	min_x_offset = floor(min_x_offset);
 	{ // array resize hack : the sequel
 		graph_edge_t* n = new graph_edge_t[top_link_idx];
 		memcpy(n, links, top_link_idx * sizeof(graph_edge_t));
@@ -331,37 +369,120 @@ int main() {
 	}
 	
 	// flatten rooms 
-	int * grid = new int[param_width * param_n_rooms];
+	int * grid = new int[param_width * param_height];
 	for (int i = 0; i < param_width * param_height; i++)
 		grid[i] = 0;
 	
+	min_x_offset = - min_x_offset;
+	min_y_offset = - min_y_offset;
 	for (int i = 0; i < num_main_rooms; i++){
 		for (int x = main_rooms[i].x; x < main_rooms[i].x + main_rooms[i].w; x++){
 			for (int y = main_rooms[i].y; y < main_rooms[i].y + main_rooms[i].h; y++){
-				if (x >= param_width) continue;
-				if (y >= param_height) continue;
+				if (x + min_x_offset >= param_width) continue;
+				if (y + min_y_offset >= param_height) continue;
+				if (x + min_x_offset < 0) continue;
+				if (y + min_y_offset < 0) continue;
 				
-				grid[y * param_width + x] = 1;
+				if (x == main_rooms[i].x || x == main_rooms[i].x + main_rooms[i].w - 1||
+					y == main_rooms[i].y || y == main_rooms[i].y + main_rooms[i].h - 1) {
+					if (grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] == 1 ||
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] == 3 ||
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] == 2 ) {
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] = 3;
+					} else {
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] = 2;
+					}
+				} else {
+					if (grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] == 1 ||
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] == 3 ||
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] == 2 ) {
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] = 3;
+					} else {
+						grid[(int) ((y + min_y_offset) * param_width + (x + min_x_offset))] = 1;
+					}
+				}
 			}
 		}
 	}
 	
-	std::cout << "t" << std::endl;
 	// convert links to horizontal and vertical lines of tiles
+	std::cout << "t_l_i = " << top_link_idx << std::endl;
 	for (int i = 0; i < top_link_idx; i++) {
+		std::cout << i + 1 << " / " << top_link_idx << std::endl;
 		int x = main_rooms[links[i].id_target_a].x;
 		int y = main_rooms[links[i].id_target_a].y;
-		int dx = main_rooms[links[i].id_target_b].x - main_rooms[links[i].id_target_a].x;
-		int dy = main_rooms[links[i].id_target_b].y - main_rooms[links[i].id_target_a].y;
+		int x1 = main_rooms[links[i].id_target_b].x;
+		int y1 = main_rooms[links[i].id_target_b].y;
 		
-		for (int j = x; j < x + dx; j++){
-			
+		if (x > x1) {
+			int t = x1;
+			x1 = x;
+			x = t;
+		} 
+		
+		if (y > y1) {
+			int t = y1;
+			y1 = y;
+			y = t;
 		}
 		
-		for (int j = y; y < y + dy; j++){
+		int dx = x1 - x;
+		int dy = y1 - y;
+		
+		std::cout << "    " << x << " " << y << " " << x1 << " " << y1 << std::endl;
+		
+		for (int j = x; j < x1; j++){
+			std::cout << "        x = " << j << "\r";
+			if (j + min_x_offset >= param_width) continue;
+			if (j + min_x_offset < 0) continue;
 			
+			grid[(int) ((y + min_y_offset) * param_width + (j + min_x_offset))] = 10;
 		}
+		
+		for (int j = y; j < y1; j++){
+			std::cout << "        y = " << j << "\r";
+			if (j + min_y_offset >= param_height) continue;
+			if (j + min_y_offset < 0) continue;
+			
+			grid[(int) ((j + min_y_offset) * param_width + (x + min_x_offset))] = 10;
+		}
+		
+		std::cout << std::endl;
 	}
+	
+	{
+		rgb_t * rgbtmp = new rgb_t[param_width * param_height];
+		for (int y = 0; y < param_height; y++) {
+			for (int x = 0; x < param_width; x++) {
+				if (grid[y * param_width + x] == 2) {
+					rgbtmp[y * param_width + x].b = 255;
+					rgbtmp[y * param_width + x].r = 0;
+					rgbtmp[y * param_width + x].g = 0;
+				} else if (grid[y * param_width + x] == 1){
+					rgbtmp[y * param_width + x].b = 255;
+					rgbtmp[y * param_width + x].r = 255;
+					rgbtmp[y * param_width + x].g = 255;
+				} else if (grid[y * param_width + x] == 2){
+					rgbtmp[y * param_width + x].b = 0;
+					rgbtmp[y * param_width + x].r = 127;
+					rgbtmp[y * param_width + x].g = 0;
+				} else if (grid[y * param_width + x] >= 10){
+					rgbtmp[y * param_width + x].b = 0;
+					rgbtmp[y * param_width + x].r = 0;
+					rgbtmp[y * param_width + x].g = 127;
+				} else {
+					rgbtmp[y * param_width + x].b = 0;
+					rgbtmp[y * param_width + x].r = 0;
+					rgbtmp[y * param_width + x].g = 0;
+				}
+			}
+			//std::cout << std::endl;
+		}
+		
+		write_bitmap("dungeon.bmp", rgbtmp, param_width, param_height);
+	}
+	
+	return 0;
 	
 	// for all links of tiles, if they intersect any rooms, add the rooms to the current structure of valid tiles
 

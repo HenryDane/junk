@@ -52,7 +52,7 @@ void set_tile(tile_t & t, bool v, bool N, bool S, bool E, bool W) {
 }
 
 void print_maze(tile_t * g) {
-	std::cout << "maze:" << std::endl;
+	//std::cout << "maze:" << std::endl;
 	for (int y = 0; y < h; y++){
 		std::string ln1;
 		std::string ln2;
@@ -62,22 +62,22 @@ void print_maze(tile_t * g) {
 			ln2 += patch::to_string((g[y * w + x].e) ? " " : "#") + patch::to_string((g[y * w + x].visited) ? " " : "#") + patch::to_string((g[y * w + x].w) ? " " : "#");
 			ln3 += "O" + patch::to_string((g[y * w + x].s) ? " " : "#") + "O";
 		}
-		std::cout << "A: " << ln1 << std::endl;
-		std::cout << "B: " << ln2 << std::endl;
-		std::cout << "C: " << ln3 << std::endl;
+		std::cout << ln1 << std::endl;
+		std::cout << ln2 << std::endl;
+		std::cout << ln3 << std::endl;
 	}
-	std::cout << "done." << std::endl;
+	//std::cout << "done." << std::endl;
 }
 
 void print_visited(tile_t * grid){
-	std::cout << "visited:" << std::endl;
+	//std::cout << "visited:" << std::endl;
 	for (int y = 0; y < h; y++){
 		for (int x = 0; x < w; x++){
 			std::cout << grid[y * w + x].visited;
 		}
 		std::cout << std::endl;
 	}
-	std::cout << "done.";
+	//std::cout << "done.";
 }
 
 int main(int argc, char *argv[]) {
@@ -202,13 +202,7 @@ int main(int argc, char *argv[]) {
 		cycle++;
 	}
 
-	std::cout << std::endl;
-	std::cout << "done." << std::endl;
-
-	std::cout << grid[3 * w + 4].visited << std::endl;
-
 	print_maze(grid);
-	print_visited(grid);
 
 	// cleanup memory
 	delete[] grid;
